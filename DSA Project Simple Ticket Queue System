@@ -1,0 +1,380 @@
+
+import java.util.ArrayDeque;
+import java.util.Queue;
+import java.util.Scanner;
+
+// Main class
+public class SimpleTicketQueueSystem {
+
+    // Maximum number of tickets
+    private static final int MAX_TICKETS = 1000;
+
+    // DSA 1: ARRAY
+    private static Ticket[] ticketRecords =
+            new Ticket[MAX_TICKETS];
+
+    private static int ticketCount = 0;
+    private static int nextTicketId = 1001;
+
+    // DSA 2: QUEUE (FIFO)
+    private static Queue<Ticket> waitingQueue =
+            new ArrayDeque<>();
+
+    // DSA 3: LINKED LIST
+    private static TicketHistory history =
+            new TicketHistory();
+
+    private static Scanner sc = new Scanner(System.in);
+
+    // Ticket status
+    enum Status {
+        WAITING,
+        SERVED,
+        CANCELLED
+    }
+
+    // Ticket class
+    static class Ticket {
+        int ticketId;
+        String customerName;
+        String issue;
+        Status status;
+
+        Ticket(int ticketId, String customerName, String issue) {
+            this.ticketId = ticketId;
+            this.customerName = customerName;
+            this.issue = issue;
+            this.status = Status.WAITING;
+        }
+
+        void display() {
+            System.out.printf(
+                "%-10d %-20s %-25s %-12s%n",
+                ticketId, customerName, issue, status
+            );
+        }
+    }
+
+    // Custom Singly Linked List for ticket history
+    static class TicketHistory {
+
+        private class Node {
+            Ticket ticket;
+            Node next;
+
+            Node(Ticket ticket) {
+                this.ticket = ticket;
+                this.next = null;
+            }
+        }
+
+        private Node head;
+        private Node tail;
+
+        // Insert at end
+        void add(Ticket ticket) {
+            Node newNode = new Node(ticket);
+
+            if (head == null) {
+                head = tail = newNode;
+            } else {
+                tail.next = newNode;
+                tail = newNode;
+            }
+        }
+
+        // Display history
+        void displayHistory() {
+            if (head == null) {
+                System.out.println("\nNo ticket history available.");
+                return;
+            }
+
+            System.out.println("\n========== TICKET HISTORY ==========");
+            System.out.printf(
+                "%-10s %-20s %-25s %-12s%n",
+                "ID", "Customer", "Issue", "Status"
+            );
+
+            Node current = head;
+
+            while (current != null) {
+                current.ticket.display();
+                current = current.next;
+            }
+        }
+    }
+
+    // Find ticket using array
+    private static Ticket searchTicket(int id) {
+        for (int i = 0; i < ticketCount; i++) {
+            if (ticketRecords[i].ticketId == id) {
+                return ticketRecords[i];
+            }
+        }
+        return null;
+    }
+
+    // 1. Generate a new ticket
+    private static void generateTicket() {
+
+        if (ticketCount >= MAX_TICKETS) {
+            System.out.println("\nTicket storage is full!");
+            return;
+        }
+
+        System.out.print("\nEnter customer name: ");
+        String name = sc.nextLine().trim();
+
+        if (name.isEmpty()) {
+            System.out.println("Customer name cannot be empty.");
+            return;
+        }
+
+        System.out.print("Enter issue description: ");
+        String issue = sc.nextLine().trim();
+
+        if (issue.isEmpty()) {
+            System.out.println("Issue cannot be empty.");
+            return;
+        }
+
+        Ticket ticket = new Ticket(
+            nextTicketId++, name, issue
+        );
+
+        // Store ticket in array
+        ticketRecords[ticketCount++] = ticket;
+
+        // Add ticket to queue
+        waitingQueue.offer(ticket);
+
+        System.out.println("\nTicket generated successfully!");
+        System.out.println("Your Ticket ID: " + ticket.ticketId);
+    }
+
+    // 2. View waiting queue
+    private static void viewWaitingQueue() {
+
+        if (waitingQueue.isEmpty()) {
+            System.out.println("\nNo customers are waiting.");
+            return;
+        }
+
+        System.out.println("\n========== WAITING QUEUE ==========");
+        System.out.printf(
+            "%-10s %-20s %-25s %-12s%n",
+            "ID", "Customer", "Issue", "Status"
+        );
+
+        for (Ticket ticket : waitingQueue) {
+            ticket.display();
+        }
+
+        System.out.println("\nTotal waiting: " + waitingQueue.size());
+    }
+
+    // 3. Serve next customer
+    private static void serveNextCustomer() {
+
+        if (waitingQueue.isEmpty()) {
+            System.out.println("\nNo customers available to serve.");
+            return;
+        }
+
+        Ticket ticket = waitingQueue.poll();
+
+        ticket.status = Status.SERVED;
+
+        // Store activity in linked list
+        history.add(ticket);
+
+        System.out.println("\nCustomer served successfully!");
+        System.out.println("Ticket ID: " + ticket.ticketId);
+        System.out.println("Customer: " + ticket.customerName);
+        System.out.println("Issue: " + ticket.issue);
+    }
+
+    // 4. Search ticket
+    private static void searchTicketById() {
+
+        System.out.print("\nEnter Ticket ID: ");
+
+        int id = readInteger();
+
+        Ticket ticket = searchTicket(id);
+
+        if (ticket == null) {
+            System.out.println("\nTicket not found.");
+        } else {
+            System.out.println("\nTicket found!");
+            System.out.printf(
+                "%-10s %-20s %-25s %-12s%n",
+                "ID", "Customer", "Issue", "Status"
+            );
+            ticket.display();
+        }
+    }
+
+    // 5. Cancel ticket
+    private static void cancelTicket() {
+
+        System.out.print("\nEnter Ticket ID to cancel: ");
+
+        int id = readInteger();
+
+        Ticket ticket = searchTicket(id);
+
+        if (ticket == null) {
+            System.out.println("\nTicket not found.");
+            return;
+        }
+
+        if (ticket.status != Status.WAITING) {
+            System.out.println(
+                "\nOnly waiting tickets can be cancelled."
+            );
+            return;
+        }
+
+        // Remove ticket from queue
+        waitingQueue.remove(ticket);
+
+        ticket.status = Status.CANCELLED;
+
+        // Store activity in linked list
+        history.add(ticket);
+
+        System.out.println("\nTicket cancelled successfully!");
+        System.out.println("Cancelled Ticket ID: " + id);
+    }
+
+    // 6. Display all tickets
+    private static void displayAllTickets() {
+
+        if (ticketCount == 0) {
+            System.out.println("\nNo tickets have been generated.");
+            return;
+        }
+
+        System.out.println("\n========== ALL TICKETS ==========");
+        System.out.printf(
+            "%-10s %-20s %-25s %-12s%n",
+            "ID", "Customer", "Issue", "Status"
+        );
+
+        for (int i = 0; i < ticketCount; i++) {
+            ticketRecords[i].display();
+        }
+    }
+
+    // 7. Display linked list history
+    private static void displayHistory() {
+        history.displayHistory();
+    }
+
+    // 8. Display waiting count
+    private static void displayWaitingCount() {
+        System.out.println(
+            "\nTotal customers waiting: " +
+            waitingQueue.size()
+        );
+    }
+
+    // Safe integer input
+    private static int readInteger() {
+
+        while (!sc.hasNextInt()) {
+            System.out.print("Invalid input! Enter a valid number: ");
+            sc.nextLine();
+        }
+
+        int number = sc.nextInt();
+        sc.nextLine();
+
+        return number;
+    }
+
+    // Main menu
+    public static void main(String[] args) {
+
+        int choice;
+
+        System.out.println(
+            "=========================================="
+        );
+        System.out.println(
+            "       SIMPLE TICKET QUEUE SYSTEM"
+        );
+        System.out.println(
+            "=========================================="
+        );
+
+        do {
+            System.out.println("\n--------------- MAIN MENU ---------------");
+            System.out.println("1. Generate New Ticket");
+            System.out.println("2. View Waiting Queue");
+            System.out.println("3. Serve Next Customer");
+            System.out.println("4. Search Ticket by ID");
+            System.out.println("5. Cancel Ticket");
+            System.out.println("6. Display All Tickets");
+            System.out.println("7. Display Ticket History");
+            System.out.println("8. Display Waiting Count");
+            System.out.println("9. Exit");
+            System.out.println("------------------------------------------");
+
+            System.out.print("Enter your choice: ");
+
+            choice = readInteger();
+
+            switch (choice) {
+
+                case 1:
+                    generateTicket();
+                    break;
+
+                case 2:
+                    viewWaitingQueue();
+                    break;
+
+                case 3:
+                    serveNextCustomer();
+                    break;
+
+                case 4:
+                    searchTicketById();
+                    break;
+
+                case 5:
+                    cancelTicket();
+                    break;
+
+                case 6:
+                    displayAllTickets();
+                    break;
+
+                case 7:
+                    displayHistory();
+                    break;
+
+                case 8:
+                    displayWaitingCount();
+                    break;
+
+                case 9:
+                    System.out.println(
+                        "\nThank you for using Ticket Queue System!"
+                    );
+                    break;
+
+                default:
+                    System.out.println(
+                        "\nInvalid choice! Please select 1-9."
+                    );
+            }
+
+        } while (choice != 9);
+
+        sc.close();
+    }
+}
